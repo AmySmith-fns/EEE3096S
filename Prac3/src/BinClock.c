@@ -81,6 +81,8 @@ int main(void){
 		MM=wiringPiI2CReadReg8(RTC, MIN);
 		HH=wiringPiI2CReadReg8(RTC, HOUR);
 		//Function calls to toggle LEDs
+		lightMins(MM);
+		lightHours(HH);
 		//Write your logic here
 		secPWM(SS);
 		// Print out the time we have stored on our RTC
