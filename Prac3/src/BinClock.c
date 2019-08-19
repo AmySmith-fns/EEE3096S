@@ -61,18 +61,7 @@ void initGPIO(void){
 	printf("BTNS done\n");
 	printf("Setup done\n");
 }
-void cleanGPIO(void){
-        printf("\n Cleaning up\n");
-        digitalWrite(LEDS[0],0);
-        for(int i=0; i<sizeof(LEDS)/sizeof(LEDS[0]);i++){
-                pinMode(LEDS[i],INPUT);
-        }
-        pinMode(SECS, INPUT);
-        exit(1);
 
-
-
-}
 
 /*
  * The main function
@@ -80,19 +69,12 @@ void cleanGPIO(void){
  */
 int main(void){
 	initGPIO();
-
-//	signal(SIGINT, cleanGPIO());
 	//Set random time (3:04PM)
-	//You can comment this file out later
+	
 	wiringPiI2CWriteReg8(RTC, HOUR, 0x1);
 	wiringPiI2CWriteReg8(RTC, MIN, 0x3);
 	wiringPiI2CWriteReg8(RTC, SEC, 0b10000000); 
-	int units=0x85;
-	char sunits[5];
-        sprintf(sunits, "%d", units);
-        int x;
-        x=atoi(sunits);
-	printf("%d",x);
+	
 	// Repeat this until we shut down
 	for (;;){
 		//Fetch the time from the RTC
@@ -101,16 +83,14 @@ int main(void){
 		HH=wiringPiI2CReadReg8(RTC, HOUR);
 		//Function calls to toggle LEDs
 		SS=SS-0x80;
-		printf("Hex: %x:%x:%x\n", HH, MM, SS);
-                
-                
+		
+              //convert digital hours to analogue   
                 HH= hFormat(HH);
-		/*MM= hexCompensation(MM);
-		HH=hexCompensation(HH);*/
-
+		
+		//turn on LEDS
 		lightMins(MM);
 		lightHours(HH);
-		//Write your logic here
+		// put seconds on pwm
 		secPWM(SS);
 		
 		// Print out the time we have stored on our RTC	
@@ -127,6 +107,7 @@ int main(void){
  */
 int hFormat(int hours){
 	/*formats to 12h*/
+	//convert to decimal first
 	hours=hexCompensation(hours);
 	
 	if (hours >= 24){
@@ -142,15 +123,17 @@ int hFormat(int hours){
  * Turns on corresponding LED's for hours
  */
 void lightHours(int units){
-	// Write your logic to light up the hour LEDs here	
+	
 	int temp = units;
 	int rem=0;
 	int bin[]={0,0,0,0};
+	//convert to binary and store in bin
 	for (int i=0; i<=3; i++){
 		rem= temp%2;
 		temp=temp/2;
 		bin[i]=rem;
 	}
+	//write bin to LEDS
 	for (int i=0; i<=3;i++){
 		digitalWrite(HLED[i], bin[i]);
 	}
@@ -161,14 +144,16 @@ void lightHours(int units){
  * Turn on the Minute LEDs
  */
 void lightMins(int units){
-	//Write your logic to light up the minute LEDs here
+	
         int temp = units;
         int rem=0;
         int bin[]={0,0,0,0,0,0};
+	//convert to binary and store in bin
         for (int i=0; i<=5; i++){
                 rem= temp%2;
                 temp=temp/2;
                 bin[i]=rem;}
+	//output bin on LEDS
         for (int i=0; i<=5;i++){
                 digitalWrite(MLED[i], bin[i]);
         }
@@ -180,7 +165,8 @@ void lightMins(int units){
  * The LED should be "off" at 0 seconds, and fully bright at 59 seconds
  */
 void secPWM(int units){
-	//100/60=1.67. 1.67*SS= output Duty cycle
+	//100/60=1.67% per second.
+	// 1.67*SS= output Duty cycle
 	int out = hexCompensation(units);
 	out=1.67*out;
 	printf("%d", out);
@@ -214,43 +200,9 @@ int hexCompensation(int units){
 	else if (units >= 0x10){
 		units = 10 + unitsU;
 	}
-	/*char sunits[5];
-	sprintf(sunits, "%x", units);
-	int x;
-	x=atoi(sunits);
-	int out=0;
-	out+= sunits[0]-'0';
-			if (sunits[1]=='a'){
-				out+= 10*16;
-			}
-			if (sunits[1]=='b'){
-                                out+= 11*16;
-                        }
-			if (sunits[1]=='c'){
-                                out+= 16*12;
-                        }
-			if (sunits[1]=='d'){
-                                out+= 16*13;
-                        }
-			if (sunits[1]=='e'){
-                                out+= 16*14;
-                        }
-			if (sunits[1]=='f'){
-                                out+= 16*15;
-                        }
-			else{
-				int l= sunits[1]-'0';
-				 out += 16*l;
-				}
-		*/	
+		
 	
-	//units= out;
-	/*int out=0;
-	for (int i=0; i<5; i++){
-		out += (sunits[i]-'0')*pow(10,i);
-	}*/
-	
-	
+		
 	return units;
 }
 
@@ -296,13 +248,13 @@ void hourInc(void){
 		       //Fetch RTC Time
       
                 HH=wiringPiI2CReadReg8(RTC, HOUR);
-		HH= hexCompensation(HH);
+		HH= hexCompensation(HH); //convert hex to decimal
                 //Increase hours by 1, ensuring not to overflow
-                if(HH==12){
+                if(HH==12){//set hours back to 1 if they reach 12
                         HH=1;
                         }
                 else HH+=1;
-		HH=decCompensation(HH);
+		HH=decCompensation(HH);//convert decimal back to hex
                 //Write hours back to the RTC
        		wiringPiI2CWriteReg8(RTC, HOUR, HH);
      
@@ -324,12 +276,14 @@ void minInc(void){
 		printf("Interrupt 2 triggered, %x\n", mins);
 		//Fetch RTC Time
  	        MM=wiringPiI2CReadReg8(RTC, MIN);
+		//convert hex to decimal
         	MM=hexCompensation(MM);
 		//Increase minutes by 1, ensuring not to overflow
-		if(MM==59){
+		if(MM==59){ //if minutes reach 59, set back to 0
 			MM=0;
 			}
 		else MM=MM+1;
+	// convert decimal back to hex
 		MM=decCompensation(MM);
 		//Write minutes back to the RTC
 	
