@@ -1,0 +1,96 @@
+#!/usr/bin/python3
+"""
+Names: Amy Smith
+Student Number: SMTAMY005
+Prac: 1
+Date: 25/07/2019
+"""
+
+# import Relevant Librares
+import RPi.GPIO as GPIO
+
+# Logic that you write
+def main():
+#counter
+	global count
+	count=0
+
+#setup LEDS
+	GPIO.setmode(GPIO.BOARD)
+	initO(12)
+	initO(22)
+	initO(31)
+	global chan_list
+	chan_list = (12,22,31)
+	#default all LEDS are off
+	GPIO.output(chan_list, GPIO.LOW) 
+#setup buttons
+	GPIO.remove_event_detect(16)
+	initI(16)
+	GPIO.add_event_callback(16, callback=increment)
+	GPIO.remove_event_detect(18)
+	initI(18)
+	GPIO.add_event_callback(18, callback=decrement)
+
+#repeat forever
+	while 1==1 :
+		pass
+
+
+def display():
+	global count
+	global chan_list
+#convert count to binary
+	temp = count
+	rem=0
+	bin=[0,0,0]
+	for i in range(3):
+		rem= temp%2
+		temp=temp//2
+		bin[i]=rem
+	GPIO.output(chan_list, bin) 
+	
+
+def increment(pin):
+	global count
+#loop back to 0 if reaches 7
+	if count == 7:
+		count =0;
+	else:
+		count+=1
+	display()
+
+def decrement(pin):
+	global count
+#loop back to 7 if reaches 0
+	if count ==0:
+		count=7;
+	else:
+		count-=1
+	display()
+
+#setup output
+def initO(pin):
+	GPIO.setup(pin, GPIO.OUT)
+
+#setup input
+def initI(pin):
+	GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+#interrupt
+	GPIO.add_event_detect(pin, GPIO.RISING, bouncetime=200)
+
+
+# Only run the functions if 
+if __name__ == "__main__":
+    # Make sure the GPIO is stopped correctly
+    try:
+        while True:
+            main()
+    except KeyboardInterrupt:
+        print("Exiting gracefully")
+        # Turn off your GPIOs here
+        GPIO.cleanup()
+    except e:
+        GPIO.cleanup()
+        print("Some other error occurred")
+        print(e.message)
